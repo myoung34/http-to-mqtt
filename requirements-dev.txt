@@ -1,6 +1,6 @@
 astroid==3.2.4 ; python_version >= "3.10" and python_version < "4"
 blinker==1.8.2 ; python_version >= "3.10" and python_version < "4"
-boto3==1.34.153 ; python_version >= "3.10" and python_version < "4"
+boto3==1.34.160 ; python_version >= "3.10" and python_version < "4"
 botocore==1.34.153 ; python_version >= "3.10" and python_version < "4"
 cachetools==5.4.0 ; python_version >= "3.10" and python_version < "4"
 certifi==2024.7.4 ; python_version >= "3.10" and python_version < "4"
