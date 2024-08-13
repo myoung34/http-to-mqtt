@@ -24,7 +24,7 @@ jobs:
     - name: isort
       run: isort -c -rc --skip app/main/__init__.py app -sp .
     - name: pylint
-      run: pylint --rcfile .pylintrc -r n app
+      run: pylint -r n app
     - name: set pythonpath
       run: echo 'PYTHONPATH='$(pwd) >> $GITHUB_ENV
     - name: pytest
