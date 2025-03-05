@@ -11,8 +11,8 @@ from app.main import BP as blueprint
 @blueprint.route('/', methods=['POST'])
 def main_route():
     """ Main route """
-    if request.headers.get('Authorization') == f'Bearer {os.environ.get("API_KEY")}':
-        print(request.data)
+    api_key = request.headers.get('Authorization', request.args.get('api_key'))
+    if api_key == f'Bearer {os.environ.get("API_KEY", '')}' or api_key == os.environ.get('API_KEY', ''): # pylint:disable=line-too-long
         publish.single(
             request.json['topic'],
             request.data,
