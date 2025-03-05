@@ -1,6 +1,7 @@
 """ all routes will end up here or loaded here for flask """
 # pylint:disable=cyclic-import
 import os
+from time import sleep
 
 import requests
 from flask import jsonify, request
@@ -26,24 +27,45 @@ def main_route():
                     os.makedirs(file_dir)
                 with open(f'{file_dir}/{attachment.filename}', 'wb') as file:  # pylint:disable=unspecified-encoding
                     file.write(file_content)
-                ## if its an image convert to PDF
-                #if request.files[key].mimetype == 'image/jpeg':
-                #    image = Image.open(request.files[key])
-                #    image.show()
-                #    pdf_path = "/tmp/test.pdf"
 
-                #    images[0].save(
-                #        pdf_path, "PDF", resolution=100.0, save_all=True, append_images=images[1:]
-                #    )
                 print(f'file saved to {file_dir}/{attachment.filename}', flush=True)
-                resp = requests.post(
-                    f'{os.environ.get('PAPERLESS_URL')}/api/documents/post_document/',
-                    files={'file': open(f'{file_dir}/{attachment.filename}', 'rb')}, # pylint:disable=consider-using-with
-                    headers={'Authorization': f'Token {os.environ.get("PAPERLESS_API_KEY")}'},
-                    timeout=90, # they can be large
-                )
-                # resp is just a quoted string
-                print(f'... id ....{resp.text}', flush=True)
+
+                with open(f'{file_dir}/{attachment.filename}', "rb") as file:
+                    tags = list(request.form.get('To', '').split('@')[0].split('+'))
+                    resp = requests.post(
+                        f'{os.environ.get("PAPERLESS_URL")}/api/documents/post_document/',
+                        files={"document": file},
+                        data={
+                            "title": attachment.filename,
+                            "tags": tags,
+                        },
+                        headers={"Authorization": f'Token {os.environ.get("PAPERLESS_API_KEY")}'},
+                        timeout=90,
+                    )
+                    task_id = resp.json()
+                    for _ in range(10):
+                        print(f'Checking on task {task_id} ...', flush=True)
+                        task_resp = requests.get(
+                            f'{os.environ.get("PAPERLESS_URL")}/api/tasks/',
+                            headers={"Authorization": f'Token {os.environ.get("PAPERLESS_API_KEY")}'}, # pylint:disable=line-too-long
+                            params={'task_id': task_id},
+                            timeout=10,
+                        )
+
+                        if task_resp.json()[0]['status'] == "STARTED":
+                            print(f'waiting for task {task_id} to complete...', flush=True)
+                            sleep(30)
+                        elif task_resp.json()[0]['status'] == "SUCCESS":
+                            print(f'task {task_id} completed successfully', flush=True)
+                            break
+                        elif task_resp.json()[0]['status'] == "FAILURE":
+                            print(f'task {task_id} failed', flush=True)
+                            break
+                        else:
+                            print(f'status: {task_resp.json()[0]["status"]}', flush=True)
+                            break
+
+
 
             ## Print or log attachments
         return jsonify({'status': 'ok'}), 200
