@@ -28,17 +28,21 @@ def test_app(
         'MQTT_HOST': 'testhost',
         'MQTT_PORT': '1883',
     }):
-        rv = client.get(
-            '/',
-            headers={'Authorization': 'Bearer test', 'Content-Type': 'application/json'},
-            json={'topic': 'test', 'message': 'test message'},
-        )
-        assert rv.status_code == 405
+        with mock.patch('paho.mqtt.publish.single') as mock_publish_single:
+            rv = client.get(
+                '/',
+                headers={'Authorization': 'Bearer test', 'Content-Type': 'application/json'},
+                json={'topic': 'test', 'message': 'test message'},
+            )
+            assert rv.status_code == 405
+            assert not mock_publish_single.called
 
     # POST: should always fail with no API_KEY set
     with mock.patch.dict('os.environ', {}):
-          rv = client.post('/')
-          assert rv.status_code == 401
+        with mock.patch('paho.mqtt.publish.single') as mock_publish_single:
+              rv = client.post('/')
+              assert rv.status_code == 401
+              assert not mock_publish_single.called
 
     # standard test
     with mock.patch.dict('os.environ', {
@@ -75,6 +79,16 @@ def test_app(
                 query_string={'api_key': 'asdf'}
             )
             assert rv.status_code == 401
+            assert not mock_publish_single.called
+
+            rv = client.post(
+                '/',
+                headers={'Content-Type': 'application/x-www-form-urlencoded'},
+                data='topic=test&message=test+message',
+                query_string={'api_key': 'foo'}
+            )
+            assert rv.status_code == 200
+            assert not mock_publish_single.called
 
             rv = client.post(
                 '/',
