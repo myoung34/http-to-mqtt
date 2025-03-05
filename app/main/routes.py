@@ -32,6 +32,7 @@ def main_route():
 
                 with open(f'{file_dir}/{attachment.filename}', "rb") as file:
                     tags = list(request.form.get('To', '').split('@')[0].split('+'))
+                    print(f'Uploading {attachment.filename} to {os.environ.get("PAPERLESS_URL")} with tags {tags}', flush=True) # pylint:disable=line-too-long
                     resp = requests.post(
                         f'{os.environ.get("PAPERLESS_URL")}/api/documents/post_document/',
                         files={"document": file},
@@ -42,7 +43,10 @@ def main_route():
                         headers={"Authorization": f'Token {os.environ.get("PAPERLESS_API_KEY")}'},
                         timeout=90,
                     )
+
                     task_id = resp.json()
+                    print(f'Upload complete. Task ID: {task_id}', flush=True)
+
                     for _ in range(10):
                         print(f'Checking on task {task_id} ...', flush=True)
                         task_resp = requests.get(
@@ -51,18 +55,19 @@ def main_route():
                             params={'task_id': task_id},
                             timeout=10,
                         )
+                        task_status = task_resp.json()[0]['status']
 
-                        if task_resp.json()[0]['status'] == "STARTED":
+                        if task_status == "STARTED":
                             print(f'waiting for task {task_id} to complete...', flush=True)
                             sleep(30)
-                        elif task_resp.json()[0]['status'] == "SUCCESS":
+                        elif task_status == "SUCCESS":
                             print(f'task {task_id} completed successfully', flush=True)
                             break
-                        elif task_resp.json()[0]['status'] == "FAILURE":
+                        elif task_status == "FAILURE":
                             print(f'task {task_id} failed', flush=True)
                             break
                         else:
-                            print(f'status: {task_resp.json()[0]["status"]}', flush=True)
+                            print(f'Unknown task status: {task_status}', flush=True)
                             break
 
 
