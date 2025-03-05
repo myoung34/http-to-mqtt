@@ -15,7 +15,6 @@ def main_route():
     api_key = request.headers.get('Authorization', request.args.get('api_key'))
     if api_key == f'Bearer {os.environ.get("API_KEY", '')}' or api_key == os.environ.get('API_KEY', ''): # pylint:disable=line-too-long
         if request.headers.get('Content-Type') != 'application/json':
-            #tags = print(request.form.get('To', ''), flush=True) # remove @.*, split by @ into list
             for key in request.files:
                 if request.files[key].mimetype not in ['application/pdf', 'image/jpeg']:
                     return jsonify({f'invalid content type: {request.files[key].mimetype}'}), 400
@@ -31,14 +30,21 @@ def main_route():
                 print(f'file saved to {file_dir}/{attachment.filename}', flush=True)
 
                 with open(f'{file_dir}/{attachment.filename}', "rb") as file:
-                    tags = list(request.form.get('To', '').split('@')[0].split('+'))
-                    print(f'Uploading {attachment.filename} to {os.environ.get("PAPERLESS_URL")} with tags {tags}', flush=True) # pylint:disable=line-too-long
+                    tag_names = list(request.form.get('To', '').split('@')[0].split('+'))
+                    tags_resp = requests.get(
+                        f'{os.environ.get("PAPERLESS_URL")}/api/tags/',
+                        headers={"Authorization": f'Token {os.environ.get("PAPERLESS_API_KEY")}'},
+                        timeout=10,
+                    ).json()
+                    tag_ids = [tag["id"] for tag in tags_resp["results"] if tag["name"] in tag_names] # pylint:disable=line-too-long
+
+                    print(f'Uploading {attachment.filename} to {os.environ.get("PAPERLESS_URL")} with tags {tag_ids}', flush=True) # pylint:disable=line-too-long
                     resp = requests.post(
                         f'{os.environ.get("PAPERLESS_URL")}/api/documents/post_document/',
                         files={"document": file},
                         data={
                             "title": attachment.filename,
-                            "tags": tags,
+                            "tags": tag_ids,
                         },
                         headers={"Authorization": f'Token {os.environ.get("PAPERLESS_API_KEY")}'},
                         timeout=90,
