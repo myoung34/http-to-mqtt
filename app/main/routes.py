@@ -53,7 +53,7 @@ def main_route():
                     task_id = resp.json()
                     print(f'Upload complete. Task ID: {task_id}', flush=True)
 
-                    for _ in range(10):
+                    for _ in range(20):
                         print(f'Checking on task {task_id} ...', flush=True)
                         task_resp = requests.get(
                             f'{os.environ.get("PAPERLESS_URL")}/api/tasks/',
@@ -63,9 +63,9 @@ def main_route():
                         )
                         task_status = task_resp.json()[0]['status']
 
-                        if task_status == "STARTED":
+                        if task_status in ["STARTED", "PENDING"]:
                             print(f'waiting for task {task_id} to complete...', flush=True)
-                            sleep(30)
+                            sleep(60)
                         elif task_status == "SUCCESS":
                             print(f'task {task_id} completed successfully', flush=True)
                             break
